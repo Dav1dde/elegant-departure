@@ -1,0 +1,21 @@
+[package]
+name = "elegant-departure"
+version = "0.1.0"
+authors = ["David Herberth <github@dav1d.de>"]
+description = "Utility crate to simplify graceful shutdown"
+license = "MIT"
+categories = ["asynchronous"]
+repository = "https://github.com/Dav1dde/elegant-departure"
+edition = "2021"
+
+
+[dependencies]
+lazy_static = "1"
+futures = "0.3"
+tokio-util = "0.6"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[[example]]
+name = "simple"
