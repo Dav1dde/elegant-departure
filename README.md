@@ -11,7 +11,7 @@ across multiple nested tasks without the need to pass a shutdown handler along.
 use std::time::Duration;
 
 async fn worker(name: &'static str) {
-    let guard = elegant_departure::get_shutdown_guard().await.unwrap();
+    let guard = elegant_departure::get_shutdown_guard();
 
     println!("[{}] working", name);
 
