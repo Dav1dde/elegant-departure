@@ -1,11 +1,53 @@
 Elegant Departure
 =================
 
-Rust crate to simplify graceful shutdowns.
+[![Crates.io][crates-badge]][crates-url]
+[![License][mit-badge]][mit-url]
+[![Build Status][actions-badge]][actions-url]
+[![docs.rs][docsrs-badge]][docsrs-url]
 
-Elegant Departure comes with a global registry to simplify shutdown 
-across multiple nested tasks without the need to pass a shutdown handler along.
+[crates-badge]: https://img.shields.io/crates/v/elegant-departure.svg
+[crates-url]: https://crates.io/crates/elegant-departure
+[mit-badge]: https://img.shields.io/badge/license-MIT-blue.svg
+[mit-url]: https://github.com/tokio-rs/tokio/blob/master/LICENSE
+[actions-badge]: https://github.com/Dav1dde/elegant-departure/workflows/CI/badge.svg
+[actions-url]: https://github.com/Dav1dde/elegant-departure/actions?query=workflow%3ACI+branch%3Amaster
+[docsrs-badge]: https://img.shields.io/docsrs/elegant-departure
+[docsrs-url]: https://docs.rs/elegant-departure
 
+Rust crate to simplify graceful async shutdowns:
+
+- **Easy** to use with a minimal API
+- **Runtime independent** (works with tokio, async-std, smol, …)
+- **Additional integrations** for tokio (shutdown on ctrl-c, signals etc.)
+
+## Usage
+
+This crate is [on crates.io](https://crates.io/crates/elegant-departure) and can be
+used by adding it to your dependencies in your project's `Cargo.toml`.
+
+```toml
+[dependencies]
+elegant-departure = "0.2"
+```
+
+For a optional tokio integration, you need to enable the tokio feature:
+
+```toml
+[dependencies]
+elegant-departure = { version = "0.2", features = "tokio" }
+```
+
+## Example
+
+Examples can be found in the [example](./examples/) directory:
+
+- [Simple](./examples/simple.rs): the full simple example from above
+- [Tokio](./examples/tokio.rs): the full tokio example from above
+- [Hyper](./examples/hyper.rs): a shutdown example using the Hyper webserver
+- [Worker](./examples/worker.rs): example implementation of a worker using `select!`
+
+Minimal example using the tokio integration:
 
 ```rust
 use std::time::Duration;
@@ -27,7 +69,9 @@ async fn main() {
     tokio::spawn(worker("worker 1"));
     tokio::spawn(worker("worker 2"));
 
-    tokio::signal::ctrl_c().await.unwrap();
-    elegant_departure::shutdown().await;
+    elegant_departure::tokio::depart()
+        // Shutdown on Ctrl+C and SIGTERM
+        .on_termination()
+        .await
 }
 ```

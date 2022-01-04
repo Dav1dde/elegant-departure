@@ -6,7 +6,7 @@
 //! Why you would want to use `elegant-departure`:
 //! - Easy to use and minimal API
 //! - Runtime independent (works with `tokio`, `async-std`, `smol`, ...)
-//! - Additional integrations for `tokio` (autmatic shutdown on `ctrl-c`, signals etc.)
+//! - Additional integrations for `tokio` (shutdown on `ctrl-c`, signals etc.)
 //!
 //! # Usage
 //!
