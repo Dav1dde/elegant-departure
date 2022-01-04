@@ -42,8 +42,8 @@ elegant-departure = { version = "0.2", features = "tokio" }
 
 Examples can be found in the [example](./examples/) directory:
 
-- [Simple](./examples/simple.rs): the full simple example from above
-- [Tokio](./examples/tokio.rs): the full tokio example from above
+- [Simple](./examples/simple.rs): simple example without tokio integration
+- [Tokio](./examples/tokio.rs): Tokio integration example
 - [Hyper](./examples/hyper.rs): a shutdown example using the Hyper webserver
 - [Worker](./examples/worker.rs): example implementation of a worker using `select!`
 
