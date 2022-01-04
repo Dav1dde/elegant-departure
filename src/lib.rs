@@ -163,6 +163,7 @@ pub(crate) fn reset() {
 }
 
 // private version that returns a boxed future, public version is a little bit more generic
+#[cfg(feature = "tokio")]
 pub(crate) fn private_wait_for_shutdown_complete() -> BoxFuture<()> {
     REGISTRY.lock().unwrap().wait_for_shutdown_complete()
 }

@@ -15,10 +15,10 @@ futures = "0.3"
 tokio-util = "0.6"
 pin-project-lite = "0.2"
 tokio = { version = "1", features = ["signal"], optional = true }
-hyper = { version = "0.14", features = ["server", "tcp", "http1"], optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
+hyper = { version = "0.14", features = ["server", "tcp", "http1"] }
 serial_test = "0.5"
 
 [[example]]
@@ -30,7 +30,7 @@ required-features = ["tokio"]
 
 [[example]]
 name = "hyper"
-required-features = ["tokio", "hyper"]
+required-features = ["tokio"]
 
 [[example]]
 name = "worker"
