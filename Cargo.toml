@@ -1,6 +1,6 @@
 [package]
 name = "elegant-departure"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["David Herberth <github@dav1d.de>"]
 description = "Utility crate to simplify graceful shutdown"
 license = "MIT"
