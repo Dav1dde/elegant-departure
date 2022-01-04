@@ -31,3 +31,13 @@ required-features = ["tokio"]
 [[example]]
 name = "hyper"
 required-features = ["tokio", "hyper"]
+
+[[example]]
+name = "worker"
+required-features = ["tokio"]
+
+# docs.rs-specific configuration
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+

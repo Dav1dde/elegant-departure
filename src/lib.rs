@@ -1,149 +1,299 @@
+//! Runtime independent async graceful shutdowns.
+//!
+//! Provides an easy meachnism to initiate a shutdown from anywhere
+//! and to wait for all workers and tasks to gracefully finish.
+//!
+//! Why you would want to use `elegant-departure`:
+//! - Easy to use and minimal API
+//! - Runtime independent (works with `tokio`, `async-std`, `smol`, ...)
+//! - Additional integrations for `tokio` (autmatic shutdown on `ctrl-c`, signals etc.)
+//!
+//! # Usage
+//!
+//! This crate is [on crates.io](https://crates.io/crates/elegant-departure) and can be
+//! used by adding it to your dependencies in your project's `Cargo.toml`.
+//!
+//! ```toml
+//! [dependencies]
+//! elegant-departure = "0.2"
+//! ```
+//!
+//! For a optional tokio integration, you need to enable the tokio feature:
+//!
+//! ```toml
+//! [dependencies]
+//! elegant-departure = { version = "0.2", features = "tokio" }
+//! ```
+//!
+//! # Example: Simple worker
+//!
+//! A minimal example with multiple workers getting notified on shutdown.
+//! The workers need an additional second after notification to exit.
+//!
+//! ```no_run
+//! async fn worker(name: &'static str) {
+//!     // Creates a new shutdown guard, the shutdown will wait for all guards to either be dropped
+//!     // or explicitly cancelled.
+//!     let guard = elegant_departure::get_shutdown_guard();
+//!
+//!     println!("[{}] working", name);
+//!
+//!     // The future completes when a shutdown is initiated
+//!     guard.wait().await;
+//!
+//!     println!("[{}] shutting down", name);
+//!     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+//!     println!("[{}] done", name);
+//!     // Guard dropped here, signalling shutdown completion
+//! }
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     tokio::spawn(worker("worker 1"));
+//!     tokio::spawn(worker("worker 2"));
+//!
+//!     // Could be any condition, e.g. waiting for a HTTP request
+//!     tokio::signal::ctrl_c().await.unwrap();
+//!     // Initiates the shutdown and waits for all tasks to complete
+//!     // Note: you could wrap this future using `tokio::time::timeout`.
+//!     elegant_departure::shutdown().await;
+//!
+//!     println!("Shutdown completed");
+//! }
+//! ```
+//!
+//! Example output:
+//!
+//! ```txt
+//! [worker 1] working
+//! [worker 2] working
+//! ^C
+//! [worker 1] shutting down
+//! [worker 2] shutting down
+//! [worker 2] done
+//! [worker 1] done
+//! Shutdown completed
+//! ```
+//!
+//! # Example: Tokio integration
+//!
+//! The same example as before, but this time using the tokio integration to exit
+//! on a termination signal (`Ctrl+C` or `SIGTERM`), `SIGUSR1` or a custom future,
+//! whichever happens first.
+//!
+//! ```no_run
+//! use tokio::{signal::unix::SignalKind, time::sleep};
+//!
+//! /* ... */
+//! # async fn worker(_: &'static str) {}
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     tokio::spawn(worker("worker 1"));
+//!     tokio::spawn(worker("worker 2"));
+//!
+//!     elegant_departure::tokio::depart()
+//!         // Terminate on Ctrl+C and SIGTERM
+//!         .on_termination()
+//!         // Terminate on SIGUSR1
+//!         .on_signal(SignalKind::user_defined1())
+//!         // Automatically initiate a shutdown after 5 seconds
+//!         .on_completion(sleep(std::time::Duration::from_secs(5)))
+//!         .await
+//! }
+//! ```
+//!
+//! # More Examples
+//!
+//! More examples can be found in the [examples] directory of the source code repository:
+//!
+//! - [Simple]: the full simple example from above
+//! - [Tokio]: the full tokio example from above
+//! - [Hyper]: a shutdown example using the Hyper webserver
+//! - [Worker]: example implementation of a worker using `select!`
+//!
+//! [examples]: https://github.com/Dav1dde/elegant-departure/tree/master/examples
+//! [Simple]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/simple.rs
+//! [Tokio]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/tokio.rs
+//! [Hyper]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/hyper.rs
+//! [Worker]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/worker.rs
+//!
+//! # Things to consider
+//!
+//! - **Do not** wait for a shutdown while holding a shutdown guard, this will wait forever:
+//!
+//! ```no_run
+//! # async fn fun() {
+//! let guard = elegant_departure::get_shutdown_guard();
+//! // This will never exit, because `guard` is never dropped/cancelled!
+//! elegant_departure::shutdown().await;
+//! # }
+//! ```
+//!
+//! - **Do not** dynamically allocate shutdown guards for short living tasks.
+//! Currently every shutdown guard is  stored globally and never freed.
+//! If you dynamically allocate shutdown guards, this essentially leaks memory.
+//!
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
+mod deplist;
+mod registry;
+mod signal;
+
+#[cfg(feature = "tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "tokio")))]
+pub mod tokio;
+
+pub use registry::{ShutdownGuard, WaitForShutdownFuture};
+
 use lazy_static::lazy_static;
-use pin_project_lite::pin_project;
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::Mutex;
-use std::task::{Context, Poll};
-
-mod deplist;
-mod signal;
-#[cfg(feature = "tokio")]
-pub mod tokio;
-
-use self::deplist::DepList;
-use self::signal::Signal;
-
-type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
 lazy_static! {
-    static ref REGISTRY: Mutex<Registry> = Mutex::new(Registry::new());
+    static ref REGISTRY: Mutex<registry::Registry> = Mutex::new(registry::Registry::new());
 }
 
-struct Registry {
-    departures: DepList<Signal>,
-    shutdown: Signal,
-}
-
-impl Registry {
-    fn new() -> Self {
-        Registry {
-            departures: DepList::new(),
-            shutdown: Signal::new(),
-        }
-    }
-
-    fn create_guard(&mut self) -> ShutdownGuard {
-        let done = Signal::new();
-
-        self.departures.push(done.clone());
-
-        ShutdownGuard {
-            shutdown: self.shutdown.clone(),
-            done,
-        }
-    }
-
-    fn shutdown(&mut self) {
-        self.shutdown.set();
-    }
-
-    fn wait_for_shutdown_complete(&self) -> BoxFuture<()> {
-        let shutdown = self.shutdown.clone();
-        // this retruns an iterator that clones the containing tokens on iteration
-        // which also includes new items that get added to the collection while iterating
-        let departures = self.departures.iter();
-
-        Box::pin(async move {
-            // wait until a shutdown is initiated
-            shutdown.wait().await;
-
-            // start consuming the done signals
-            // TODO: we should allow a timeout here
-            for signal in departures {
-                signal.wait().await;
-            }
-        })
-    }
-
-    #[cfg(test)]
-    fn reset(&mut self) {
-        self.departures = DepList::new();
-        self.shutdown = Signal::new();
-    }
-}
-
-pub struct ShutdownGuard {
-    shutdown: Signal,
-    done: Signal,
-}
-
-impl ShutdownGuard {
-    pub fn wait(&self) -> WaitForShutdownFuture<'_> {
-        WaitForShutdownFuture {
-            inner: self.shutdown.wait(),
-        }
-    }
-
-    pub fn cancel(&self) {
-        self.done.set();
-    }
-}
-
-impl<'a> std::fmt::Debug for ShutdownGuard {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ShutdownGuard")
-            .field("in_shutdown", &self.shutdown.is_set())
-            .field("cancelled", &self.done.is_set())
-            .finish()
-    }
-}
-
-impl Drop for ShutdownGuard {
-    fn drop(&mut self) {
-        self.done.set();
-    }
-}
-
-pin_project! {
-    pub struct WaitForShutdownFuture<'a> {
-        #[pin]
-        inner: signal::WaitForSignalFuture<'a>,
-    }
-}
-
-impl<'a> std::fmt::Debug for WaitForShutdownFuture<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WaitForShutdownFuture").finish()
-    }
-}
-
-impl<'a> std::future::Future for WaitForShutdownFuture<'a> {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-        this.inner.poll(cx)
-    }
-}
+pub(crate) type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
 #[cfg(test)]
 pub(crate) fn reset() {
     REGISTRY.lock().unwrap().reset();
 }
 
-// private version that returns a BoxFuture, public version is a little bit more generic
+// private version that returns a boxed future, public version is a little bit more generic
 pub(crate) fn private_wait_for_shutdown_complete() -> BoxFuture<()> {
     REGISTRY.lock().unwrap().wait_for_shutdown_complete()
 }
 
+/// Creates a new shutdown guard and returns it.
+///
+/// A shutdown guard is a handle which can be cancelled
+/// and is automatically cancelled when dropped.
+/// After initiating the shutdown the guard's future will complete
+/// to indicate that the shutdown has been requested.
+///
+/// The function holding the guard should start gracefully shutting
+/// down (stop accepting new data, save state, etc.) then exit.
+///
+/// **Note:** Do not dynamically create shutdown guards for short living taks.
+/// A global registry remembers every guard, which may lead to a memory leak
+/// when continuosly creating and destryoing guards.
+///
+/// # Example:
+///
+/// ```no_run
+/// use futures::FutureExt;
+/// # async fn do_work(name: u64) -> u64 { name }
+/// async fn worker(name: u64) {
+///     let guard = elegant_departure::get_shutdown_guard();
+///
+///     let mut counter = 0;
+///     loop {
+///         // do some work and wait for the shutdown
+///         let result = futures::select! {
+///             _ = guard.wait().fuse() => None,
+///             r = do_work(name).fuse() => Some(r),
+///         };
+///
+///         let result = match result {
+///             None => break, // shutdown received, terminate the worker
+///             Some(x) => x,
+///         };
+///
+///         counter += result;
+///         println!("[worker {}] Did some hard work", name);
+///     }
+///
+///     println!("[worker {}] Created {} work units, cleaning up", name, counter);
+///     // Do any additional cleanup that is necessary, flushing state etc.
+///     println!("[worker {}] Done", name);
+/// }
+/// ```
 pub fn get_shutdown_guard() -> ShutdownGuard {
     REGISTRY.lock().unwrap().create_guard()
 }
 
+/// Creates a future which terminates when the shutdown is completed.
+///
+/// A shutdown is complete when a shutdown was initated and all guards have been dropped or
+/// cancelled.
+///
+/// This function is usually not required. Typically you would await
+/// the future returned by [shutdown](shutdown) instead or use a [guard](get_shutdown_guard).
+///
+/// # Example:
+///
+/// ```no_run
+/// use hyper::{
+///     service::{make_service_fn, service_fn},
+///     Body, Request, Response, Server,
+/// };
+/// use std::convert::Infallible;
+///
+/// async fn good_bye_world(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+///     // initiate a shutdown but don't wait for it to complete
+///     let _ = elegant_departure::shutdown();
+///     Ok(Response::new(Body::from("Good bye World!")))
+/// }
+///
+/// #[tokio::main]
+/// async fn main() {
+///     let svc = make_service_fn(|_| async { Ok::<_, Infallible>(service_fn(good_bye_world)) });
+///
+///     let addr = ([127, 0, 0, 1], 3000).into();
+///     let server = Server::bind(&addr).serve(svc);
+///
+///     server
+///         // Only exit after the shutdown has completed.
+///         // If hyper was started as a task you would wait on a guard here instead.
+///         .with_graceful_shutdown(elegant_departure::wait_for_shutdown_complete())
+///         .await
+///         .unwrap();
+/// }
+/// ```
 pub fn wait_for_shutdown_complete() -> impl Future<Output = ()> + Send {
     REGISTRY.lock().unwrap().wait_for_shutdown_complete()
 }
 
+/// Initiates the global shutdown.
+///
+/// Triggers all shutdown guards and returns a future which resolves once all processing has
+/// stopped (all guards have been dropped or cancelled).
+///
+/// The returned future does not need to be awaited, this is useful e.g. when initiating the
+/// shutdown from a HTTP handler or some other external event.
+///
+/// # Examples:
+///
+/// Shutdown initiated in main after a condition (`ctrl+c`):
+///
+/// ```no_run
+/// #[tokio::main]
+/// async fn main() {
+///     /* spawn workers, handle requests, etc. */
+///
+///     // Could be any condition, e.g. waiting for a HTTP request
+///     tokio::signal::ctrl_c().await.unwrap();
+///
+///     // Initiate shutdown and wait for it to complete before exiting the program.
+///     // Note: you could wrap this future using `tokio::time::timeout`.
+///     elegant_departure::shutdown().await;
+/// }
+/// ```
+///
+/// Shutdown initited from a hyper service:
+///
+/// ```no_run
+/// # use std::convert::Infallible;
+/// # use hyper::{Body, Request, Response};
+/// async fn good_bye_world(_: Request<Body>) -> Result<Response<Body>, Infallible> {
+///     // initiate a shutdown but don't wait for it to complete
+///     let _ = elegant_departure::shutdown();
+///     Ok(Response::new(Body::from("Good bye World!")))
+/// }
+/// ```
 pub fn shutdown() -> impl Future<Output = ()> + Send {
     REGISTRY.lock().unwrap().shutdown();
     REGISTRY.lock().unwrap().wait_for_shutdown_complete()

@@ -1,3 +1,28 @@
+//! Additional tokio integration, for builtin shutdown on signal, cltr-c, etc.
+//!
+//! # Example:
+//!
+//! ```rust
+//! # use tokio::signal::unix::SignalKind;
+//! # use tokio::time::sleep;
+//! # use std::time::Duration;
+//! # async fn worker(_: &'static str) {}
+//! #[tokio::main]
+//! async fn main() {
+//!     tokio::spawn(worker("worker 1"));
+//!     tokio::spawn(worker("worker 2"));
+//!
+//!     elegant_departure::tokio::depart()
+//!         // Terminate on Ctrl+C and SIGTERM
+//!         .on_termination()
+//!         // Terminate on SIGUSR1
+//!         .on_signal(SignalKind::user_defined1())
+//!         // Automatically initiate a shutdown after 5 seconds
+//!         .on_completion(sleep(Duration::from_secs(5)))
+//!         .await
+//! }
+//! ```
+
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -7,6 +32,20 @@ use tokio::signal::unix::SignalKind;
 
 type BoxFuture<'a> = Pin<Box<dyn Future<Output = ()> + 'a>>;
 
+/// Creates the [`Departure`] future builder to set up and customize shutdown conditions.
+///
+/// Returns the [`Departure`] builder. Refer to the [`Departure`] documentation for customization
+/// options.
+///
+/// # Example:
+///
+/// ```no_run
+/// # async fn fun() {
+/// elegant_departure::tokio::depart()
+///     .on_termination()
+///     .await
+/// # }
+/// ```
 pub fn depart<'a>() -> Departure<'a> {
     Departure {
         inner: Some(Inner::new()),
@@ -14,42 +53,138 @@ pub fn depart<'a>() -> Departure<'a> {
     }
 }
 
+/// Future builder for customizing shutdown conditions.
+///
+/// Can be created using the [`depart`] function.
+///
+/// # Panics
+///
+/// The returned [future](Departure) panics when it is awaited without at least calling one builder
+/// method, to prevent misuse.
+///
+/// If you just want to await shutdown completion, use
+/// [`wait_for_shutdown_complete`](crate::wait_for_shutdown_complete) instead.
+///
+/// # Examples:
+///
+/// The most common usecase, to automatically trigger a shutdown on `Ctrl+C` and `SIGTERM` (on
+/// unix platforms).
+///
+/// ```no_run
+/// # async fn fun() {
+/// elegant_departure::tokio::depart()
+///     .on_termination()
+///     .await
+/// # }
+/// ```
+///
+/// Shutdown on termination or after 5 seconds (a custom condition):
+///
+/// ```no_run
+/// # async fn fun() {
+/// elegant_departure::tokio::depart()
+///     .on_termination()
+///     // Initiates a shutdown when the future completes (after 5 seconds)
+///     .on_completion(tokio::time::sleep(std::time::Duration::from_secs(5)))
+///     .await
+/// # }
+/// ```
 pub struct Departure<'a> {
     inner: Option<Inner<'a>>,
     fut: Option<BoxFuture<'a>>,
 }
 
 impl<'a> Departure<'a> {
+    /// Initiates a shutdown on `Ctrl+C`.
+    ///
+    /// ```no_run
+    /// # async fn fun() {
+    /// elegant_departure::tokio::depart()
+    ///     .on_ctrl_c()
+    ///     .await
+    /// # }
+    /// ```
     pub fn on_ctrl_c(mut self) -> Self {
         self.inner.as_mut().unwrap().on_ctrl_c();
         self
     }
 
-    /// - catch ctrl+c + sigterm
+    /// Initiates a shutdown on `Ctrl+C` and `SITGERM` (on unix).
+    ///
+    /// ```no_run
+    /// # async fn fun() {
+    /// elegant_departure::tokio::depart()
+    ///     .on_termination()
+    ///     .await
+    /// # }
+    /// ```
     pub fn on_termination(mut self) -> Self {
         self.inner.as_mut().unwrap().on_termination();
         self
     }
 
-    #[cfg(unix)]
+    /// Initiates a shutdown on `SIGINT`.
+    ///
+    /// Convenience method for [`on_signal(SignalKind::interrupt())`](Departure::on_signal).
+    ///
+    /// ```no_run
+    /// # async fn fun() {
+    /// elegant_departure::tokio::depart()
+    ///     .on_sigint()
+    ///     .await
+    /// # }
+    /// ```
+    #[cfg(any(unix, doc))]
+    #[cfg_attr(docsrs, doc(cfg(unix)))]
     pub fn on_sigint(mut self) -> Self {
         self.inner.as_mut().unwrap().on_sigint();
         self
     }
 
-    #[cfg(unix)]
+    /// Initiates a shutdown on `SIGTERM`.
+    ///
+    /// Convenience method for [`on_signal(SignalKind::terminate())`](Departure::on_signal).
+    ///
+    /// ```no_run
+    /// # async fn fun() {
+    /// elegant_departure::tokio::depart()
+    ///     .on_sigterm()
+    ///     .await
+    /// # }
+    /// ```
+    #[cfg(any(unix, doc))]
+    #[cfg_attr(docsrs, doc(cfg(unix)))]
     pub fn on_sigterm(mut self) -> Self {
         self.inner.as_mut().unwrap().on_sigterm();
         self
     }
 
-    /// Catch a specific signal
-    #[cfg(unix)]
+    /// Initiates a shutdown on a specific signal.
+    ///
+    /// ```no_run
+    /// # async fn fun() {
+    /// elegant_departure::tokio::depart()
+    ///     .on_signal(tokio::signal::unix::SignalKind::user_defined1())
+    ///     .await
+    /// # }
+    /// ```
+    #[cfg(any(unix, doc))]
+    #[cfg_attr(docsrs, doc(cfg(unix)))]
     pub fn on_signal(mut self, signal: SignalKind) -> Self {
         self.inner.as_mut().unwrap().on_signal(signal);
         self
     }
 
+    /// Initiates a shutdown when the passed future completes.
+    ///
+    /// ```no_run
+    /// # async fn fun() {
+    /// elegant_departure::tokio::depart()
+    ///     // Shutdown after 5 seconds
+    ///     .on_completion(tokio::time::sleep(std::time::Duration::from_secs(5)))
+    ///     .await
+    /// # }
+    /// ```
     pub fn on_completion(mut self, fut: impl Future<Output = ()> + 'a) -> Self {
         self.inner.as_mut().unwrap().on_completion(fut);
         self

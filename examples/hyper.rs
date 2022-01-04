@@ -40,7 +40,8 @@ async fn main() {
     println!("[hyper] listening on {}", addr);
 
     server
-        .with_graceful_shutdown(elegant_departure::tokio::depart().on_ctrl_c())
+        // .with_graceful_shutdown(elegant_departure::tokio::depart().on_ctrl_c())
+        .with_graceful_shutdown(elegant_departure::wait_for_shutdown_complete())
         .await
         .unwrap();
 
