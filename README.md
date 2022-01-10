@@ -46,6 +46,8 @@ Examples can be found in the [example](./examples/) directory:
 - [Tokio](./examples/tokio.rs): Tokio integration example
 - [Hyper](./examples/hyper.rs): a shutdown example using the Hyper webserver
 - [Worker](./examples/worker.rs): example implementation of a worker using `select!`
+- [Smol](./examples/smol.rs): example using the smol runtime
+- [Async Std](./examples/async_std.rs): example using the async_std runtime
 
 Minimal example using the tokio integration:
 

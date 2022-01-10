@@ -19,6 +19,9 @@ tokio = { version = "1", features = ["signal"], optional = true }
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
 hyper = { version = "0.14", features = ["server", "tcp", "http1"] }
+async-std = { version = "1", features = ["attributes"] }
+smol = "1"
+anyhow = "1"
 serial_test = "0.5"
 
 [[example]]
@@ -35,6 +38,12 @@ required-features = ["tokio"]
 [[example]]
 name = "worker"
 required-features = ["tokio"]
+
+[[example]]
+name = "smol"
+
+[[example]]
+name = "async_std"
 
 # docs.rs-specific configuration
 [package.metadata.docs.rs]

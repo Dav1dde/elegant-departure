@@ -111,12 +111,16 @@
 //! - [Tokio]: the full tokio example from above
 //! - [Hyper]: a shutdown example using the Hyper webserver
 //! - [Worker]: example implementation of a worker using `select!`
+//! - [Smol]: example using the smol runtime
+//! - [Async Std]: example using the async_std runtime
 //!
 //! [examples]: https://github.com/Dav1dde/elegant-departure/tree/master/examples
 //! [Simple]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/simple.rs
 //! [Tokio]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/tokio.rs
 //! [Hyper]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/hyper.rs
 //! [Worker]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/worker.rs
+//! [Smol]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/smol.rs
+//! [Async Std]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/async_std.rs
 //!
 //! # Things to consider
 //!
