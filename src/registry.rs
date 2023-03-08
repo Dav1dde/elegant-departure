@@ -111,7 +111,7 @@ impl ShutdownGuard {
     }
 }
 
-impl<'a> std::fmt::Debug for ShutdownGuard {
+impl std::fmt::Debug for ShutdownGuard {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ShutdownGuard")
             .field("in_shutdown", &self.shutdown.is_set())
