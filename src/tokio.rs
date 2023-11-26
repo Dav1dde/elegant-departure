@@ -1,4 +1,4 @@
-//! Additional tokio integration, for builtin shutdown on signal, cltr-c, etc.
+//! Additional tokio integration, for builtin shutdown on signal, ctrl-c, etc.
 //!
 //! # Example:
 //!
