@@ -43,6 +43,7 @@ elegant-departure = { version = "0.2", features = "tokio" }
 Examples can be found in the [example](./examples/) directory:
 
 - [Simple](./examples/simple.rs): simple example without tokio integration
+- [Axum](./examples/axum.rs): Axum integration example
 - [Tokio](./examples/tokio.rs): Tokio integration example
 - [Hyper](./examples/hyper.rs): a shutdown example using the Hyper webserver
 - [Worker](./examples/worker.rs): example implementation of a worker using `select!`

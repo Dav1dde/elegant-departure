@@ -25,6 +25,28 @@
 //! elegant-departure = { version = "0.2", features = "tokio" }
 //! ```
 //!
+//! # Example: Axum
+//!
+//! Axum is easily integrated through the `tokio` integration.
+//!
+//! ```no_run
+//! use axum::{routing::get, Router};
+//!
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     let app = Router::new().route("/", get(|| async { "Hello, World!" }));
+//!
+//!     println!("Listening on port 3000!");
+//!     let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
+//!
+//!     axum::serve(listener, app)
+//!         .with_graceful_shutdown(elegant_departure::tokio::depart().on_termination())
+//!         .await?;
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
 //! # Example: Simple worker
 //!
 //! A minimal example with multiple workers getting notified on shutdown.
@@ -110,6 +132,7 @@
 //! More examples can be found in the [examples] directory of the source code repository:
 //!
 //! - [Simple]: the full simple example from above
+//! - [Axum]: the full axum example from above
 //! - [Tokio]: the full tokio example from above
 //! - [Hyper]: a shutdown example using the Hyper webserver
 //! - [Worker]: example implementation of a worker using `select!`
@@ -118,6 +141,7 @@
 //!
 //! [examples]: https://github.com/Dav1dde/elegant-departure/tree/master/examples
 //! [Simple]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/simple.rs
+//! [Axum]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/axum.rs
 //! [Tokio]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/tokio.rs
 //! [Hyper]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/hyper.rs
 //! [Worker]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/worker.rs

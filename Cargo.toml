@@ -22,10 +22,15 @@ hyper = { version = "0.14", features = ["server", "tcp", "http1"] }
 async-std = { version = "1", features = ["attributes"] }
 smol = "1"
 anyhow = "1"
-serial_test = "0.5"
+serial_test = "3"
+axum = "0.7"
 
 [[example]]
 name = "simple"
+
+[[example]]
+name = "axum"
+required-features = ["tokio"]
 
 [[example]]
 name = "tokio"
