@@ -226,7 +226,7 @@ pub fn get_shutdown_guard() -> ShutdownGuard {
 /// cancelled.
 ///
 /// This function is usually not required. Typically you would await
-/// the future returned by [shutdown](shutdown) instead or use a [guard](get_shutdown_guard).
+/// the future returned by [shutdown] instead or use a [guard](get_shutdown_guard).
 ///
 /// # Example:
 ///

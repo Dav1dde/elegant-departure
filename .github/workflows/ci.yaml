@@ -3,7 +3,7 @@ on: [workflow_dispatch, push, pull_request]
 name: CI
 
 env:
-  nightly: nightly-2021-12-17
+  nightly: nightly
 
 jobs:
   check:
