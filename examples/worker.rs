@@ -4,7 +4,7 @@ use tokio::time::sleep;
 
 async fn do_work(num: u64) -> usize {
     sleep(Duration::from_millis(num * 300)).await;
-    return 1;
+    1
 }
 
 async fn worker(name: u64) {

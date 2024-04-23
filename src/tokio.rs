@@ -30,7 +30,7 @@ use std::task::{Context, Poll};
 #[cfg(unix)]
 use tokio::signal::unix::SignalKind;
 
-type BoxFuture<'a> = Pin<Box<dyn Future<Output = ()> + 'a>>;
+type BoxFuture<'a> = Pin<Box<dyn Future<Output = ()> + Send + 'a>>;
 
 /// Creates the [`Departure`] future builder to set up and customize shutdown conditions.
 ///
@@ -185,7 +185,7 @@ impl<'a> Departure<'a> {
     ///     .await
     /// # }
     /// ```
-    pub fn on_completion(mut self, fut: impl Future<Output = ()> + 'a) -> Self {
+    pub fn on_completion(mut self, fut: impl Future<Output = ()> + Send + 'a) -> Self {
         self.inner.as_mut().unwrap().on_completion(fut);
         self
     }
@@ -244,7 +244,7 @@ impl<'a> Inner<'a> {
         }));
     }
 
-    fn on_completion(&mut self, fut: impl Future<Output = ()> + 'a) {
+    fn on_completion(&mut self, fut: impl Future<Output = ()> + Send + 'a) {
         self.futures.push(Box::pin(fut));
     }
 
@@ -271,6 +271,12 @@ mod tests {
     use super::*;
     use serial_test::serial;
 
+    #[test]
+    fn ensure_send() {
+        fn is_send<T: Send>(_: T) {}
+        is_send(depart())
+    }
+
     #[tokio::test]
     #[serial]
     async fn should_allow_non_static_futures() {
@@ -284,7 +290,6 @@ mod tests {
                 data_ref.push_str("bar");
             })
             .await;
-        drop(data_ref);
 
         assert_eq!("foobar", data);
     }
@@ -299,7 +304,7 @@ mod tests {
         let b1 = barrier.clone();
         tokio::spawn(async move {
             b1.wait().await;
-            let _ = crate::shutdown();
+            drop(crate::shutdown());
         });
 
         depart()

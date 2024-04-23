@@ -82,6 +82,7 @@
 //! whichever happens first.
 //!
 //! ```no_run
+//! # #[cfg(feature = "tokio")] mod doc {
 //! use tokio::{signal::unix::SignalKind, time::sleep};
 //!
 //! /* ... */
@@ -101,6 +102,7 @@
 //!         .on_completion(sleep(std::time::Duration::from_secs(5)))
 //!         .await
 //! }
+//! # }
 //! ```
 //!
 //! # More Examples
@@ -295,7 +297,7 @@ pub fn wait_for_shutdown_complete() -> impl Future<Output = ()> + Send {
 /// # use hyper::{Body, Request, Response};
 /// async fn good_bye_world(_: Request<Body>) -> Result<Response<Body>, Infallible> {
 ///     // initiate a shutdown but don't wait for it to complete
-///     let _ = elegant_departure::shutdown();
+///     drop(elegant_departure::shutdown());
 ///     Ok(Response::new(Body::from("Good bye World!")))
 /// }
 /// ```

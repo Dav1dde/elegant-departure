@@ -6,7 +6,7 @@ use std::convert::Infallible;
 
 async fn good_bye_world(_: Request<Body>) -> Result<Response<Body>, Infallible> {
     // initiate a shutdown but don't wait for it to complete
-    let _ = elegant_departure::shutdown();
+    drop(elegant_departure::shutdown());
     Ok(Response::new(Body::from("Good bye World!")))
 }
 

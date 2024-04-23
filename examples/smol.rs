@@ -11,7 +11,7 @@ async fn serve(mut stream: Async<TcpStream>) -> Result<()> {
     stream.read_exact(&mut buffer).await?;
     if &buffer == b"GET /shutdown" {
         println!("Initiating shutdown!");
-        let _ = elegant_departure::shutdown();
+        drop(elegant_departure::shutdown());
     }
 
     Ok(())
