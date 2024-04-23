@@ -28,14 +28,14 @@ used by adding it to your dependencies in your project's `Cargo.toml`.
 
 ```toml
 [dependencies]
-elegant-departure = "0.2"
+elegant-departure = "0.3"
 ```
 
 For a optional tokio integration, you need to enable the tokio feature:
 
 ```toml
 [dependencies]
-elegant-departure = { version = "0.2", features = "tokio" }
+elegant-departure = { version = "0.3", features = "tokio" }
 ```
 
 ## Example
