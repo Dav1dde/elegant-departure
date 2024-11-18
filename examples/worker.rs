@@ -12,13 +12,8 @@ async fn worker(name: u64) {
     let mut counter = 0;
     loop {
         let result = tokio::select! {
-            _ = guard.wait() => None,
-            r = do_work(name) => Some(r),
-        };
-
-        let result = match result {
-            None => break,
-            Some(x) => x,
+            r = do_work(name) => r,
+            _ = guard.wait() => break,
         };
 
         counter += result;
@@ -34,16 +29,22 @@ async fn worker(name: u64) {
 }
 
 async fn important_worker() {
-    let _guard = elegant_departure::get_shutdown_guard().shutdown_on_drop();
+    let guard = elegant_departure::get_shutdown_guard().shutdown_on_drop();
 
-    // Do some important work.
     for i in 0.. {
-        sleep(Duration::from_secs(1)).await;
+        // Do some important work and wait for the shutdown.
+        tokio::select! {
+            _ = sleep(Duration::from_secs(1)) => {},
+            _ = guard.wait() => break,
+        };
+
         if i == 5 {
             panic!("Oh no an unexpected crash in the important worker!");
         }
         println!("[important_worker] Did some important work");
     }
+
+    println!("[important_worker] Important worker is shutting down");
 }
 
 #[tokio::main]
