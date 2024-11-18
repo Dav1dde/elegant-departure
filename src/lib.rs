@@ -161,8 +161,8 @@
 //! ```
 //!
 //! - **Do not** dynamically allocate shutdown guards for short living tasks.
-//! Currently every shutdown guard is  stored globally and never freed.
-//! If you dynamically allocate shutdown guards, this essentially leaks memory.
+//!   Currently every shutdown guard is  stored globally and never freed.
+//!   If you dynamically allocate shutdown guards, this essentially leaks memory.
 //!
 #![cfg_attr(docsrs, feature(doc_cfg))]
 

@@ -1,4 +1,3 @@
-use futures::FutureExt;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -12,10 +11,9 @@ async fn worker(name: u64) {
 
     let mut counter = 0;
     loop {
-        // Or use `tokio::select!`
-        let result = futures::select! {
-            _ = guard.wait().fuse() => None,
-            r = do_work(name).fuse() => Some(r),
+        let result = tokio::select! {
+            _ = guard.wait() => None,
+            r = do_work(name) => Some(r),
         };
 
         let result = match result {
@@ -35,10 +33,24 @@ async fn worker(name: u64) {
     println!("[worker {}] Done", name);
 }
 
+async fn important_worker() {
+    let _guard = elegant_departure::get_shutdown_guard().shutdown_on_drop();
+
+    // Do some important work.
+    for i in 0.. {
+        sleep(Duration::from_secs(1)).await;
+        if i == 5 {
+            panic!("Oh no an unexpected crash in the important worker!");
+        }
+        println!("[important_worker] Did some important work");
+    }
+}
+
 #[tokio::main]
 async fn main() {
     tokio::spawn(worker(1));
     tokio::spawn(worker(2));
+    tokio::spawn(important_worker());
 
     elegant_departure::tokio::depart().on_termination().await
 }

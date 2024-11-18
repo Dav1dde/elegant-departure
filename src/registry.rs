@@ -3,6 +3,7 @@ use crate::signal::{Signal, WaitForSignalFuture};
 use crate::BoxFuture;
 use pin_project_lite::pin_project;
 use std::pin::Pin;
+use std::sync::atomic::AtomicBool;
 use std::task::{Context, Poll};
 
 /// Registry tracking all shutdown guards.
@@ -27,6 +28,7 @@ impl Registry {
         ShutdownGuard {
             shutdown: self.shutdown.clone(),
             done,
+            shutdown_on_drop: AtomicBool::new(false),
         }
     }
 
@@ -88,9 +90,24 @@ impl Registry {
 pub struct ShutdownGuard {
     shutdown: Signal,
     done: Signal,
+    // TODO: For the next release this should be a `bool` but `cancel()`
+    // will have to take `&mut self` instead (breaking change).
+    shutdown_on_drop: AtomicBool,
 }
 
 impl ShutdownGuard {
+    /// When set, the guard initiates a shutdown when it is dropped.
+    ///
+    /// A cancelled, with [`Self::cancel`], guard will not initiate a shutdown.
+    ///
+    /// Services which are essential for operation can make use of this, to initiate
+    /// a shutdown when they abort unexpectedly.
+    pub fn shutdown_on_drop(self) -> Self {
+        self.shutdown_on_drop
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        self
+    }
+
     /// Returns a future which waits for the shutdown signal.
     ///
     /// Can be called multiple times.
@@ -108,6 +125,8 @@ impl ShutdownGuard {
     /// The guard can be cancelled multiple times, but this operation cannot be undone.
     pub fn cancel(&self) {
         self.done.set();
+        self.shutdown_on_drop
+            .store(false, std::sync::atomic::Ordering::Relaxed);
     }
 }
 
@@ -124,6 +143,12 @@ impl Drop for ShutdownGuard {
     /// Cancels the shutdown guard.
     fn drop(&mut self) {
         self.done.set();
+        if self
+            .shutdown_on_drop
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            self.shutdown.set();
+        }
     }
 }
 
