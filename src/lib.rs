@@ -47,6 +47,27 @@
 //! }
 //! ```
 //!
+//! The [Axum Services] example sets up `axum` and multiple other background tasks/services:
+//!
+//! ```no_run
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     tokio::spawn(http::start_server());
+//!     tokio::spawn(database::start_cleanup_cron());
+//!     tokio::spawn(utils::shutdown_notifier());
+//!
+//!     // Initiates a shutdown on `Ctrl+C` or a `SIGTERM` signal and waits for all tasks to shutdown.
+//!     elegant_departure::tokio::depart().on_termination().await;
+//!
+//!     println!("Shutdown complete!");
+//!
+//!     Ok(())
+//! }
+//! # mod http { pub async fn start_server() {} }
+//! # mod database { pub async fn start_cleanup_cron() {} }
+//! # mod utils { pub async fn shutdown_notifier() {} }
+//! ```
+//!
 //! # Example: Simple worker
 //!
 //! A minimal example with multiple workers getting notified on shutdown.
@@ -133,6 +154,7 @@
 //!
 //! - [Simple]: the full simple example from above
 //! - [Axum]: the full axum example from above
+//! - [Axum Services]: a bigger axum example, which also starts multiple background services
 //! - [Tokio]: the full tokio example from above
 //! - [Worker]: example implementation of a worker using `select!`
 //! - [Smol]: example using the smol runtime
@@ -141,6 +163,7 @@
 //! [examples]: https://github.com/Dav1dde/elegant-departure/tree/master/examples
 //! [Simple]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/simple.rs
 //! [Axum]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/axum.rs
+//! [Axum Services]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/axum_services.rs
 //! [Tokio]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/tokio.rs
 //! [Worker]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/worker.rs
 //! [Smol]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/smol.rs

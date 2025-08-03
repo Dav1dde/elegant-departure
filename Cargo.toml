@@ -32,6 +32,10 @@ name = "axum"
 required-features = ["tokio"]
 
 [[example]]
+name = "axum_services"
+required-features = ["tokio"]
+
+[[example]]
 name = "tokio"
 required-features = ["tokio"]
 

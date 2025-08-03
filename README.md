@@ -44,6 +44,7 @@ Examples can be found in the [example](./examples/) directory:
 
 - [Simple](./examples/simple.rs): simple example without tokio integration
 - [Axum](./examples/axum.rs): Axum integration example
+- [Axum Services](./examples/axum_services.rs): Axum integration example with multiple background services
 - [Tokio](./examples/tokio.rs): Tokio integration example
 - [Worker](./examples/worker.rs): example implementation of a worker using `select!`
 - [Smol](./examples/smol.rs): example using the smol runtime
