@@ -18,12 +18,11 @@ tokio = { version = "1", features = ["signal"], optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full"] }
-hyper = { version = "0.14", features = ["server", "tcp", "http1"] }
 async-std = { version = "1", features = ["attributes"] }
-smol = "1"
+smol = "2"
 anyhow = "1"
 serial_test = "3"
-axum = "0.7"
+axum = "0.8"
 
 [[example]]
 name = "simple"
@@ -34,10 +33,6 @@ required-features = ["tokio"]
 
 [[example]]
 name = "tokio"
-required-features = ["tokio"]
-
-[[example]]
-name = "hyper"
 required-features = ["tokio"]
 
 [[example]]

@@ -134,7 +134,6 @@
 //! - [Simple]: the full simple example from above
 //! - [Axum]: the full axum example from above
 //! - [Tokio]: the full tokio example from above
-//! - [Hyper]: a shutdown example using the Hyper webserver
 //! - [Worker]: example implementation of a worker using `select!`
 //! - [Smol]: example using the smol runtime
 //! - [Async Std]: example using the async_std runtime
@@ -143,7 +142,6 @@
 //! [Simple]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/simple.rs
 //! [Axum]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/axum.rs
 //! [Tokio]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/tokio.rs
-//! [Hyper]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/hyper.rs
 //! [Worker]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/worker.rs
 //! [Smol]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/smol.rs
 //! [Async Std]: https://github.com/Dav1dde/elegant-departure/tree/master/examples/async_std.rs
@@ -253,37 +251,6 @@ pub fn get_shutdown_guard() -> ShutdownGuard {
 ///
 /// This function is usually not required. Typically you would await
 /// the future returned by [shutdown] instead or use a [guard](get_shutdown_guard).
-///
-/// # Example:
-///
-/// ```no_run
-/// use hyper::{
-///     service::{make_service_fn, service_fn},
-///     Body, Request, Response, Server,
-/// };
-/// use std::convert::Infallible;
-///
-/// async fn good_bye_world(_: Request<Body>) -> Result<Response<Body>, Infallible> {
-///     // initiate a shutdown but don't wait for it to complete
-///     let _ = elegant_departure::shutdown();
-///     Ok(Response::new(Body::from("Good bye World!")))
-/// }
-///
-/// #[tokio::main]
-/// async fn main() {
-///     let svc = make_service_fn(|_| async { Ok::<_, Infallible>(service_fn(good_bye_world)) });
-///
-///     let addr = ([127, 0, 0, 1], 3000).into();
-///     let server = Server::bind(&addr).serve(svc);
-///
-///     server
-///         // Only exit after the shutdown has completed.
-///         // If hyper was started as a task you would wait on a guard here instead.
-///         .with_graceful_shutdown(elegant_departure::wait_for_shutdown_complete())
-///         .await
-///         .unwrap();
-/// }
-/// ```
 pub fn wait_for_shutdown_complete() -> impl Future<Output = ()> + Send {
     REGISTRY.lock().unwrap().wait_for_shutdown_complete()
 }
@@ -311,18 +278,6 @@ pub fn wait_for_shutdown_complete() -> impl Future<Output = ()> + Send {
 ///     // Initiate shutdown and wait for it to complete before exiting the program.
 ///     // Note: you could wrap this future using `tokio::time::timeout`.
 ///     elegant_departure::shutdown().await;
-/// }
-/// ```
-///
-/// Shutdown initited from a hyper service:
-///
-/// ```no_run
-/// # use std::convert::Infallible;
-/// # use hyper::{Body, Request, Response};
-/// async fn good_bye_world(_: Request<Body>) -> Result<Response<Body>, Infallible> {
-///     // initiate a shutdown but don't wait for it to complete
-///     drop(elegant_departure::shutdown());
-///     Ok(Response::new(Body::from("Good bye World!")))
 /// }
 /// ```
 pub fn shutdown() -> impl Future<Output = ()> + Send {
