@@ -197,14 +197,12 @@ pub mod tokio;
 
 pub use registry::{ShutdownGuard, WaitForShutdownFuture};
 
-use lazy_static::lazy_static;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
-lazy_static! {
-    static ref REGISTRY: Mutex<registry::Registry> = Mutex::new(registry::Registry::new());
-}
+static REGISTRY: LazyLock<Mutex<registry::Registry>> =
+    LazyLock::new(|| Mutex::new(registry::Registry::new()));
 
 pub(crate) type BoxFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
 
