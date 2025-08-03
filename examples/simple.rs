@@ -3,13 +3,13 @@ use std::time::Duration;
 async fn worker(name: &'static str) {
     let guard = elegant_departure::get_shutdown_guard();
 
-    println!("[{}] working", name);
+    println!("[{name}] working");
 
     guard.wait().await;
-    println!("[{}] shutting down", name);
+    println!("[{name}] shutting down");
 
     tokio::time::sleep(Duration::from_secs(1)).await;
-    println!("[{}] done", name);
+    println!("[{name}] done");
 }
 
 #[tokio::main]

@@ -27,7 +27,7 @@ async fn listen(listener: Async<TcpListener>) -> Result<()> {
 
         smol::spawn(async move {
             if let Err(err) = serve(stream).await {
-                println!("Connection error: {:#?}", err);
+                println!("Connection error: {err:#?}");
             }
         })
         .detach();
@@ -37,13 +37,13 @@ async fn listen(listener: Async<TcpListener>) -> Result<()> {
 async fn worker(name: &'static str) {
     let guard = elegant_departure::get_shutdown_guard();
 
-    println!("[{}] working", name);
+    println!("[{name}] working");
 
     guard.wait().await;
-    println!("[{}] shutting down", name);
+    println!("[{name}] shutting down");
 
     smol::Timer::after(Duration::from_secs(1)).await;
-    println!("[{}] done", name);
+    println!("[{name}] done");
 }
 
 fn main() -> Result<()> {

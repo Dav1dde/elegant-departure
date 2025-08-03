@@ -5,13 +5,13 @@ use std::time::Duration;
 async fn worker(name: &'static str) {
     let guard = elegant_departure::get_shutdown_guard();
 
-    println!("[{}] working", name);
+    println!("[{name}] working");
 
     guard.wait().await;
-    println!("[{}] shutting down", name);
+    println!("[{name}] shutting down");
 
     sleep(Duration::from_secs(1)).await;
-    println!("[{}] done", name);
+    println!("[{name}] done");
 }
 
 #[async_std::main]
@@ -26,7 +26,7 @@ async fn main() -> std::io::Result<()> {
     loop {
         let (recv, peer) = socket.recv_from(&mut buf).await?;
         let sent = socket.send_to(&buf[..recv], &peer).await?;
-        println!("Sent {} out of {} bytes to {}", sent, recv, peer);
+        println!("Sent {sent} out of {recv} bytes to {peer}");
 
         if buf.starts_with(b"shutdown") {
             break;
