@@ -7,6 +7,7 @@ license = "MIT"
 categories = ["asynchronous"]
 repository = "https://github.com/Dav1dde/elegant-departure"
 edition = "2021"
+rust-version = "1.80"
 
 
 [dependencies]

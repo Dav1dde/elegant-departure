@@ -4,6 +4,7 @@ name: CI
 
 env:
   nightly: nightly
+  msrv: 1.82
 
 jobs:
   check:
@@ -62,7 +63,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: stable
+          toolchain: "${{ env.msrv }}"
           override: true
       - uses: Swatinem/rust-cache@v1
       - uses: actions-rs/cargo@v1
