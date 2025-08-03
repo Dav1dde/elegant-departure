@@ -260,7 +260,7 @@ impl<'a> Inner<'a> {
         }
 
         Box::pin(async move {
-            futures::future::select_all(self.futures).await;
+            futures_util::future::select_all(self.futures).await;
             crate::shutdown().await;
         })
     }
