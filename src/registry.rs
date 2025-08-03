@@ -110,11 +110,27 @@ impl ShutdownGuard {
 
     /// Returns a future which waits for the shutdown signal.
     ///
-    /// Can be called multiple times.
     /// A cancelled guard can still be awaited for shutdown signal.
+    ///
+    /// # Cancel safety
+    ///
+    /// This method is cancel safe.
     pub fn wait(&self) -> WaitForShutdownFuture<'_> {
         WaitForShutdownFuture {
             inner: self.shutdown.wait(),
+        }
+    }
+
+    /// Returns an owned future which waits for the shutdown signal.
+    ///
+    /// A cancelled guard can still be awaited for shutdown signal.
+    ///
+    /// # Cancel safety
+    ///
+    /// This method is cancel safe.
+    pub fn wait_owned(&self) -> WaitForShutdownFuture<'static> {
+        WaitForShutdownFuture {
+            inner: self.shutdown.wait_owned(),
         }
     }
 

@@ -1,6 +1,8 @@
 use pin_project_lite::pin_project;
 use std::task::{Context, Poll};
-use tokio_util::sync::{CancellationToken, WaitForCancellationFuture};
+use tokio_util::sync::{
+    CancellationToken, WaitForCancellationFuture, WaitForCancellationFutureOwned,
+};
 
 #[derive(Clone)]
 pub struct Signal {
@@ -24,7 +26,17 @@ impl Signal {
 
     pub fn wait(&self) -> WaitForSignalFuture<'_> {
         WaitForSignalFuture {
-            inner: self.token.cancelled(),
+            inner: WaitForSignal::Borrowed {
+                f: self.token.cancelled(),
+            },
+        }
+    }
+
+    pub fn wait_owned(&self) -> WaitForSignalFuture<'static> {
+        WaitForSignalFuture {
+            inner: WaitForSignal::Owned {
+                f: self.token.clone().cancelled_owned(),
+            },
         }
     }
 }
@@ -44,9 +56,17 @@ impl std::fmt::Debug for Signal {
 }
 
 pin_project! {
+    #[project = WaitForSignalProj]
+    enum WaitForSignal<'a> {
+        Borrowed { #[pin] f: WaitForCancellationFuture<'a> },
+        Owned { #[pin] f: WaitForCancellationFutureOwned },
+    }
+}
+
+pin_project! {
     pub struct WaitForSignalFuture<'a> {
         #[pin]
-        inner: WaitForCancellationFuture<'a>,
+        inner: WaitForSignal<'a>,
     }
 }
 
@@ -61,6 +81,9 @@ impl<'a> std::future::Future for WaitForSignalFuture<'a> {
 
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
-        this.inner.poll(cx)
+        match this.inner.project() {
+            WaitForSignalProj::Borrowed { f } => f.poll(cx),
+            WaitForSignalProj::Owned { f } => f.poll(cx),
+        }
     }
 }
